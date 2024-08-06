@@ -1,212 +1,218 @@
-import random
-import requests
-from datetime import datetime, timedelta
-from django.shortcuts import get_object_or_404, render, redirect
-from django.core.cache import cache
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from transbank.error.transbank_error import TransbankError
-from transbank.webpay.webpay_plus.transaction import Transaction
-from .models import Producto, Carrito, CarritoItem
-from .serializers import ProductoSerializer, CarritoSerializer
-API_URL = "https://mindicador.cl/api/dolar"
+from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import render
+from .models import Producto
+from transbank.webpay.webpay_plus.transaction import Transaction, WebpayOptions, IntegrationCommerceCodes, IntegrationApiKeys, TransbankError
+from transbank.common.integration_type import IntegrationType
+from django.http import JsonResponse
 
-def obtener_fecha_actual():
-    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+def producto_list(request):
+    productos = Producto.objects.all()
+    return render(request, 'producto_list.html', {'productos': productos})
 
-def obtener_valor_dolar_actual():
-    response = requests.get(API_URL)
-    data = response.json()
-
-    if response.status_code == 200:
-        try:
-            fecha_actual = datetime.now().strftime("%Y-%m-%d")
-            valor_dolar = next((item["valor"] for item in data["serie"] if item["fecha"].startswith(fecha_actual)), None)
-
-            if valor_dolar is None:
-                fecha_anterior = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-                valor_dolar = next((item["valor"] for item in data["serie"] if item["fecha"].startswith(fecha_anterior)), None)
-
-            if valor_dolar is None:
-                raise ValueError("No se encontró el valor del dólar para la fecha actual ni para la fecha anterior")
-            
-            return valor_dolar
-        except KeyError:
-            raise ValueError("Error al analizar la respuesta JSON de la API")
-    else:
-        raise ValueError(f"Error al obtener el valor del dólar: {response.status_code}")
-
-def obtener_precio_usd(precio_clp):
-    valor_dolar = cache.get('valor_dolar')
-    if not valor_dolar:
-        valor_dolar = obtener_valor_dolar_actual()
-        cache.set('valor_dolar', valor_dolar, 60 * 60)  # Cache por 1 hora
-    precio_usd = precio_clp / valor_dolar
-    return "{:.2f}".format(precio_usd)
-
-class ProductoViewSet(viewsets.ViewSet):
-    def list(self, request):
-        productos = Producto.objects.all().only('id', 'nombre', 'marca', 'precio')
-        data = []
-        for producto in productos:
-            precio_usd = obtener_precio_usd(producto.precio)
-            data.append({
-                'id': producto.id,
-                'nombre': producto.nombre,
-                'marca': producto.marca,
-                'precio': producto.precio,
-                'precio_usd': precio_usd,
-            })
-        return Response(data)
-
-    def retrieve_by_name(self, request, nombre=None):
-        producto = get_object_or_404(Producto, nombre=nombre)
-        precio_usd = obtener_precio_usd(producto.precio)
-        precio_clp = producto.precio
-
-        serializer = ProductoSerializer(producto)
-        data = serializer.data
-        data['precio'] = [
-            {
-                'fecha': obtener_fecha_actual(),
-                'valor_usd': precio_usd,
-                'valor_clp': precio_clp
-            }
-        ]
-
-        return Response(data)
-
-    def retrieve(self, request, pk=None):
-        producto = get_object_or_404(Producto, pk=pk)
-        precio_usd = obtener_precio_usd(producto.precio)
-        precio_clp = producto.precio
-
-        serializer = ProductoSerializer(producto)
-        data = serializer.data
-        data['precio'] = [
-            {
-                'fecha': obtener_fecha_actual(),
-                'valor_usd': precio_usd,
-                'valor_clp': precio_clp
-            }
-        ]
-
-        return Response(data)
-    
-    def create(self, request):
-        serializer = ProductoSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class CarritoViewSet(viewsets.ViewSet):
-    def retrieve(self, request, pk=None):
-        carrito = get_object_or_404(Carrito, pk=pk)
-        serializer = CarritoSerializer(carrito)
-        return Response(serializer.data)
-
-    def create(self, request):
-        carrito = Carrito.objects.create()
-        return Response({'id': carrito.id}, status=status.HTTP_201_CREATED)
-
-    def add_item(self, request, pk=None):
-        carrito = get_object_or_404(Carrito, pk=pk)
-        producto_id = request.data.get('producto_id')
-        cantidad = request.data.get('cantidad', 1)
-        producto = get_object_or_404(Producto, pk=producto_id)
-        carrito_item, created = CarritoItem.objects.get_or_create(carrito=carrito, producto=producto)
-        if not created:
-            carrito_item.cantidad += cantidad
-        carrito_item.save()
-        return Response({'status': 'item added'}, status=status.HTTP_200_OK)
-
-class WebpayPlusCreate(APIView):
-    def get(self, request, carrito_id):
-        carrito = get_object_or_404(Carrito, id=carrito_id)
-        total_amount = sum(item.subtotal() for item in carrito.carritoitem_set.all())
-        
-        buy_order = str(random.randrange(1000000, 99999999))
-        session_id = str(random.randrange(1000000, 99999999))
-        return_url = "http://localhost:8000/api/webpay-plus/commit/"
-
-        create_request = {
-            "buy_order": buy_order,
-            "session_id": session_id,
-            "amount": total_amount,
-            "return_url": return_url,
-        }
-
-        try:
-            response = (Transaction()).create(buy_order, session_id, total_amount, return_url)
-            url_webpay_form = response["url"]+"?"+"token_ws="+response["token"]
-            
-            return Response(
-                {"request": create_request, "response": response, "url_webpay_form": url_webpay_form},
-                 status=status.HTTP_200_OK,
-             )
-        except TransbankError as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-class CommitWebpayTransaction(APIView):
-    def get(self, request):
-        token_ws = request.query_params.get('token_ws')
-
-        if token_ws:
-            try:
-                result = (Transaction()).commit(token_ws)
-                return Response({"status": "Success", "detail": result})
-            except TransbankError as e:
-                return Response({"error": str(e)}, status=500)
-        else:
-            return Response({"error": "Token not provided"}, status=400)
-
-# Create your views here.
-def home(request):
-    return render(request, 'api/home.html')
-
-def productos(request):
-    carrito_id = request.session.get('carrito_id')
-    if carrito_id:
-        carrito = get_object_or_404(Carrito, id=carrito_id)
-    else:
-        carrito = Carrito.objects.create()
-        request.session['carrito_id'] = carrito.id
-
-    if request.method == 'POST':
-        producto_id = request.POST.get('producto_id')
-        cantidad = int(request.POST.get('cantidad', 1))
-        producto = get_object_or_404(Producto, id=producto_id)
-        carrito_item, created = CarritoItem.objects.get_or_create(carrito=carrito, producto=producto)
-        if not created:
-            carrito_item.cantidad += cantidad
-        carrito_item.save()
-        return redirect('carrito')
-
-    productos = Producto.objects.all().only('id', 'nombre', 'marca', 'precio')
-    data = []
-    for producto in productos:
-        precio_usd = obtener_precio_usd(producto.precio)
-        data.append({
-            'id': producto.id,
-            'nombre': producto.nombre,
-            'marca': producto.marca,
-            'precio': producto.precio,
-            'precio_usd': precio_usd,
-        })
-    return render(request, 'api/productos.html', {'productos': data, 'carrito': carrito})
 
 def carrito(request):
-    carrito_id = request.session.get('carrito_id')
-    carrito = get_object_or_404(Carrito, id=carrito_id)
-    carrito_items = CarritoItem.objects.filter(carrito=carrito)
-    total = sum(item.subtotal() for item in carrito_items)
-    return render(request, 'api/carrito.html', {'carrito_items': carrito_items, 'total': total})
+    carrito = request.session.get('carrito', [])  # Obtener el carrito de la sesión como lista
+    productos_carrito = []
+    total = 0
+    
+    # Agrupar los productos por ID y calcular la cantidad de cada uno
+    productos_cantidad = {}
+    for producto_id in carrito:
+        if producto_id in productos_cantidad:
+            productos_cantidad[producto_id] += 1
+        else:
+            productos_cantidad[producto_id] = 1
+    
+    # Obtener los productos y calcular el total
+    for producto_id, cantidad in productos_cantidad.items():
+        try:
+            producto = Producto.objects.get(id=producto_id)
+            total += producto.precio * cantidad
+            productos_carrito.append({
+                'producto': producto,
+                'cantidad': cantidad
+            })
+        except Producto.DoesNotExist:
+            # Manejar el caso cuando el producto no existe en la base de datos
+            pass
+    
+    return render(request, 'carrito.html', {'productos_carrito': productos_carrito, 'total': total})
 
-def eliminar_item_carrito(request, item_id):
-    item = get_object_or_404(CarritoItem, id=item_id)
-    item.delete()
+def contacto(request):
+    return render(request, 'contacto.html')
+
+from django.shortcuts import render
+
+def home(request):
+    return render(request, 'index.html')
+
+def producto_detalle(request, producto_id):
+    producto = get_object_or_404(Producto, id=producto_id)
+    return render(request, 'producto_detalle.html', {'producto': producto})
+
+
+
+def agregar_al_carrito(request, producto_id):
+    if request.method == 'POST':
+        cantidad = int(request.POST.get('cantidad', 1))
+        carrito = request.session.get('carrito', [])
+
+        for _ in range(cantidad):
+            carrito.append(producto_id)
+
+        request.session['carrito'] = carrito
+
+    return redirect('producto_list')
+
+
+
+
+
+def eliminar_del_carrito(request, producto_id):
+    carrito = request.session.get('carrito', [])  # Obtener el carrito de la sesión como lista
+    
+    while producto_id in carrito:
+        carrito.remove(producto_id)
+    
+    request.session['carrito'] = carrito
+    
     return redirect('carrito')
+
+
+def procesar_compra(request):
+    carrito = request.session.get('carrito', [])
+    total = 0
+
+    # Agrupar los productos por ID y calcular la cantidad de cada uno
+    productos_cantidad = {}
+    for producto_id in carrito:
+        if producto_id in productos_cantidad:
+            productos_cantidad[producto_id] += 1
+        else:
+            productos_cantidad[producto_id] = 1
+
+    # Obtener los productos y calcular el total
+    for producto_id, cantidad in productos_cantidad.items():
+        producto = Producto.objects.filter(id=producto_id).first()
+        if producto:
+            total += producto.precio * cantidad
+        else:
+            # Manejar el caso cuando el producto no existe
+            print(f"El producto con ID {producto_id} no existe.")
+            # Puedes realizar alguna acción adicional, como eliminar el producto del carrito
+
+    # Convertir el monto total a un valor entero en pesos chilenos
+    amount = int(total)
+
+    buy_order = "orden_compra_123"  # Genera un número de orden único
+    session_id = "sesion_123"  # Genera un ID de sesión único
+    return_url = "http://localhost:8000/confirmacion_pago/"  # URL de retorno después del pago
+
+    try:
+        # Crear una instancia de Transaction con las opciones de Webpay Plus
+        tx = Transaction(WebpayOptions(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY, IntegrationType.TEST))
+
+        # Crear una transacción de Webpay Plus
+        response = tx.create(buy_order, session_id, amount, return_url)
+
+        # Obtener la URL y el token de la respuesta
+        url = response['url']
+        token = response['token']
+
+        # Redireccionar al formulario de pago de Transbank
+        return redirect(url + "?token_ws=" + token)
+
+    except TransbankError as e:
+        # Manejar errores de Transbank
+        print(e.message)
+        return redirect('carrito')
+
+
+
+
+
+def confirmacion_pago(request):
+    token = request.GET.get("token_ws")
+
+    try:
+        # Crear una instancia de Transaction con las opciones de Webpay Plus
+        tx = Transaction(WebpayOptions(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY, IntegrationType.TEST))
+
+        # Confirmar la transacción
+        response = tx.commit(token)
+
+        if response['status'] == "AUTHORIZED":
+            # Pago exitoso, realizar acciones adicionales (guardar la venta, limpiar el carrito, etc.)
+            carrito = request.session.get('carrito', [])
+            productos_comprados = []
+
+            # Agrupar los productos por ID y calcular la cantidad de cada uno
+            productos_cantidad = {}
+            for producto_id in carrito:
+                if producto_id in productos_cantidad:
+                    productos_cantidad[producto_id] += 1
+                else:
+                    productos_cantidad[producto_id] = 1
+
+            # Obtener los productos comprados y calcular el subtotal
+            total = 0
+            for producto_id, cantidad in productos_cantidad.items():
+                producto = Producto.objects.get(id=producto_id)
+                subtotal = producto.precio * cantidad
+                total += subtotal
+                productos_comprados.append({
+                    'producto': producto,
+                    'cantidad': cantidad,
+                    'subtotal': subtotal
+                })
+
+            # Limpiar el carrito después del pago exitoso
+            request.session['carrito'] = []
+
+            # Renderizar la plantilla de pago exitoso con los detalles de la compra
+            context = {
+                'productos_comprados': productos_comprados,
+                'total': total,
+                'numero_orden': response['buy_order'],
+                'fecha_transaccion': response['transaction_date'],
+                'numero_tarjeta': response['card_detail']['card_number']
+            }
+            return render(request, "pago_exitoso.html", context)
+
+        else:
+            # Pago fallido, realizar acciones de manejo de errores
+            error_message = response['error_message']
+            context = {'error_message': error_message}
+            return render(request, "pago_fallido.html", context)
+
+    except TransbankError as e:
+        # Manejar errores de Transbank
+        error_message = e.message
+        context = {'error_message': error_message}
+        return render(request, "pago_fallido.html", context)
+
+
+
+
+def estado_transaccion(request):
+    token = request.GET.get("token_ws")
+
+    try:
+        # Crear una instancia de Transaction con las opciones de Webpay Plus
+        tx = Transaction(WebpayOptions(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY, IntegrationType.TEST))
+
+        # Obtener el estado de la transacción
+        response = tx.status(token)
+
+        # Realizar acciones según el estado de la transacción
+        if response.status == "AUTHORIZED":
+            # La transacción está autorizada
+            return render(request, "transaccion_autorizada.html")
+        else:
+            # La transacción no está autorizada
+            return render(request, "transaccion_no_autorizada.html")
+
+    except TransbankError as e:
+        # Manejar errores de Transbank
+        print(e.message)
+        return redirect('carrito')
