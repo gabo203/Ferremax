@@ -1,0 +1,174 @@
+/* Estilos generales */
+body {
+    font-family: 'Montserrat', sans-serif;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.section-title {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    text-align: center;
+    color: #FFD700;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #FFD700;
+    color: #FFF;
+}
+
+.btn-primary:hover {
+    background-color: #FFC300;
+}
+
+.btn-secondary {
+    background-color: #FFF;
+    color: #FFD700;
+    border: 2px solid #FFD700;
+}
+
+.btn-secondary:hover {
+    background-color: #FFD700;
+    color: #FFF;
+}
+
+/* Estilos de la sección Hero */
+.hero {
+    background-color: #FFD700;
+    padding: 150px 0;
+    text-align: center;
+    color: #FFF;
+}
+
+.hero-title {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.hero-subtitle {
+    font-size: 24px;
+    margin-bottom: 40px;
+}
+
+.btn-hero {
+    font-size: 20px;
+    padding: 15px 30px;
+}
+
+/* Estilos de la sección Featured Products */
+.featured-products {
+    background-color: #FFF8DC;
+    padding: 80px 0;
+}
+
+.product-carousel {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+
+.product-item {
+    width: 300px;
+    padding: 30px;
+    background-color: #FFF;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.product-image {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.product-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.product-description {
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.btn-product {
+    font-size: 16px;
+    padding: 10px 20px;
+}
+
+/* Estilos de la sección About */
+.about {
+    background-color: #F5DEB3;
+    padding: 80px 0;
+}
+
+.about-description {
+    font-size: 18px;
+    margin-bottom: 30px;
+}
+
+.about-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.btn-about {
+    font-size: 18px;
+    padding: 12px 25px;
+}
+
+/* Estilos de la sección Testimonials */
+.testimonials {
+    background-color: #FFE4B5;
+    padding: 80px 0;
+}
+
+.testimonial-carousel {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+
+.testimonial-item {
+    width: 400px;
+    padding: 30px;
+    background-color: #FFF;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.testimonial-text {
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+.testimonial-author {
+    font-size: 16px;
+    font-weight: 600;
+    color: #FFD700;
+}

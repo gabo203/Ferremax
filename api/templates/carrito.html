@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}FerreMax - Carrito de Compras{% endblock %}
+{% block content %}
+    <div class="container">
+        <h1 class="text-center my-5">Carrito de Compras</h1>
+        {% if productos_carrito %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in productos_carrito %}
+                        <tr>
+                            <td>{{ item.producto.nombre }} (x{{ item.cantidad }})</td>
+                            <td>${{ item.producto.precio|floatformat:0 }}</td>
+                            <td>
+                                <a href="{% url 'eliminar_del_carrito' item.producto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-right"><strong>Total: ${{ total|floatformat:0 }}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="text-right mt-3">
+                <a href="{% url 'procesar_compra' %}" class="btn btn-success">Comprar productos</a>
+            </div>
+        {% else %}
+            <p>No hay productos en el carrito.</p>
+        {% endif %}
+    </div>
+{% endblock %}

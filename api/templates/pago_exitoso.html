@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <h1>Pago Exitoso</h1>
+        <p>¡Gracias por tu compra! El pago se ha procesado correctamente.</p>
+
+        <h2>Productos comprados:</h2>
+        <div class="row">
+            {% for item in productos_comprados %}
+                <div class="col-md-2 mb-4">
+                    <div class="card h-100">
+                        <img src="{{ item.producto.imagen.url }}" class="card-img-top" alt="{{ item.producto.nombre }}">
+                        <div class="card-body">
+                            <h6 class="card-title small">{{ item.producto.nombre }}</h6>
+                            <p class="card-text small">Cantidad: {{ item.cantidad }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <a href="{% url 'home' %}" class="btn btn-primary">Volver al inicio</a>
+    </div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+    <div class="container my-5">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="display-4 font-weight-bold text-danger">Bienvenido a FerreMax</h1>
+                <p class="lead text-muted">La ferretería del futuro, con las mejores herramientas y suministros.</p>
+                <a href="{% url 'producto_list' %}" class="btn btn-danger btn-lg rounded-pill">Descubre Nuestros Productos</a>
+            </div>
+            <div class="col-md-6">
+                <img src="{% static 'core/img/hero.png' %}" alt="FerreMax" class="img-fluid rounded shadow">
+            </div>
+        </div>
+    </div>
+
+   <section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-4">Productos Destacados</h2>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-4 border-0 shadow">
+                    <img src="{% static 'productos/taladro.jpeg' %}" alt="Sierra Circular" class="card-img-top rounded">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Taladro Eléctrico</h5>
+                        <p class="card-text">Taladro inalámbrico de 20V con accesorios</p>
+                        <p class="card-text font-weight-bold">Precio: $85,490</p>
+                        <a href="{% url 'producto_detalle' 3 %}" class="btn btn-outline-danger rounded-pill">Ver Detalles</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4 border-0 shadow">
+                    <img src="{% static 'productos/llaves.jpeg' %}" alt="Juego de Llaves" class="card-img-top rounded">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Juego de Llaves</h5>
+                        <p class="card-text">Juego de llaves combinadas métricas y en pulgadas</p>
+                        <p class="card-text font-weight-bold">Precio: $23,790</p>
+                        <a href="{% url 'producto_detalle' 7 %}" class="btn btn-outline-danger rounded-pill">Ver Detalles</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4 border-0 shadow">
+                    <img src="{% static 'productos/destornillador.jpeg' %}" alt="Martillo" class="card-img-top rounded">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Destornillador</h5>
+                        <p class="card-text">Juego de destornilladores de precisión</p>
+                        <p class="card-text font-weight-bold">Precio: $9,490</p>
+                        <a href="{% url 'producto_detalle' 2 %}" class="btn btn-outline-danger rounded-pill">Ver Detalles</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <section class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-4">Testimonios</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card mb-4 border-0 shadow">
+                        <div class="card-body">
+                            <p class="card-text">"El futuro de las ferreterías está aquí. ¡FerreMax es impresionante!"</p>
+                            <p class="card-text text-muted">- Juan Pérez</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mb-4 border-0 shadow">
+                        <div class="card-body">
+                            <p class="card-text">"FerreMax tiene productos únicos y de vanguardia. ¡Me encanta!"</p>
+                            <p class="card-text text-muted">- María Rodríguez</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mb-4 border-0 shadow">
+                        <div class="card-body">
+                            <p class="card-text">"La atención al cliente en FerreMax es excepcional. Siempre están un paso adelante."</p>
+                            <p class="card-text text-muted">- Carlos Gómez</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}

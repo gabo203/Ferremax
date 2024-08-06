@@ -1,0 +1,9 @@
+<!-- home.html -->
+{% extends 'api/base.html' %}
+{% block content %}
+<div class="jumbotron text-center">
+    <h1 class="display-4">Bienvenido a Ferremax</h1>
+    <p class="lead">Tu tienda de ferretería con los mejores productos y precios.</p>
+    <a class="btn btn-primary btn-lg" href="{% url 'productos' %}" role="button">Ver Productos</a>
+</div>
+{% endblock %}
